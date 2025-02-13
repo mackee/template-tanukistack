@@ -22,7 +22,7 @@ $ go install golang.org/x/tools/cmd/gonew@latest
 ### Create a new project
 
 ```sh
-$ gonew github.com/mackee/template-tanukistack path/to/your/project
+$ gonew github.com/mackee/template-tanukistack path/to/your/module ./your_directory
 $ cd path/to/your/project
 $ aqua i
 ```
@@ -32,7 +32,7 @@ $ aqua i
 `.env` file is required to run the application. Create a `.env` file in the root directory of the project and write the following contents.
 
 ```sh
-$ echo 'DATABASE_DSN="user:password@tcp(localhost:5432)/dbname"' > .env
+$ echo 'DATABASE_DSN="postgres://user:password@localhost:5432/dbname?sslmode=disable"' > .env
 ```
 
 ### Run the application
