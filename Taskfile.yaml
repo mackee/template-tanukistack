@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  dev:
+    cmds:
+      - go tool tanukiup --dir ./... --addr :8080 --build 'go build -o {outpath} ./cmd/app' --handler-dir ./handler
+    silent: true
+    dotenv:
+      - .env
+  test:
+    cmds:
+      - go test -v ./...
+    silent: true
+    dotenv:
+      - .env
