@@ -72,8 +72,8 @@ github.com/mackee/go-genddl v0.0.0-20240912022326-fade26b3e8ea h1:6GFogLix2UUvFz
 github.com/mackee/go-genddl v0.0.0-20240912022326-fade26b3e8ea/go.mod h1:F3rm5G9VxQDLs8gBBK0JOG0ybZSzxvZ4Lr25IY6HQOw=
 github.com/mackee/go-sqlla/v2 v2.99.0-rc1 h1:ip4pOcUIwrjqay6BFXnbbjeHznZi+z9sgd0Ur7PqlSA=
 github.com/mackee/go-sqlla/v2 v2.99.0-rc1/go.mod h1:ymkxDde6XoYLYDxVWd2WOJeA4NnwMM8Op8tuw8UoS9U=
-github.com/mackee/tanukirpc v0.5.1 h1:sTOhXuy3cV8/Lz/HRnqQXcU9lWN74rnfCCWxjxj3Wq4=
-github.com/mackee/tanukirpc v0.5.1/go.mod h1:XIVoyeZC6wqCfM2Y22/XBHK1o0T8u2PHfu8XL1SrttU=
+github.com/mackee/tanukirpc v0.5.3 h1:eIGmSQnVkv+cFKgNn+bkFq1r5LqG3qzqthjIWcRhplM=
+github.com/mackee/tanukirpc v0.5.3/go.mod h1:XIVoyeZC6wqCfM2Y22/XBHK1o0T8u2PHfu8XL1SrttU=
 github.com/nxadm/tail v1.4.11 h1:8feyoE3OzPrcshW5/MJ4sGESc5cqmGkGCWlco4l0bqY=
 github.com/nxadm/tail v1.4.11/go.mod h1:OTaG3NK980DZzxbRq6lEuzgU+mug70nY11sMd4JXXHc=
 github.com/onsi/ginkgo v1.16.5 h1:8xi0RTUf59SOSfEtZMvwTvXYMzG4gV23XVHOZiXNtnE=

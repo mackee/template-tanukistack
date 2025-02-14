@@ -10,7 +10,7 @@ import (
 	"github.com/mackee/template-tanukistack/record"
 )
 
-//go:generate go tool gentypescript -out ./dist/api.ts ./
+//go:generate go tool gentypescript -out ../dist/api.ts ./
 
 func NewHandler(cli *client.Client) *tanukirpc.Router[*Registry] {
 	registry := NewRegistry(cli)
