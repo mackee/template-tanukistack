@@ -141,11 +141,6 @@ func (q messageSelectSQL) IDIn(vs ...MessageID) messageSelectSQL {
 	return q
 }
 
-func (q messageSelectSQL) PkColumn(pk int64, exprs ...sqlla.Operator) messageSelectSQL {
-	v := MessageID(pk)
-	return q.ID(v, exprs...)
-}
-
 func (q messageSelectSQL) OrderByID(order sqlla.Order) messageSelectSQL {
 	q.order = order.WithColumn(q.appendColumnPrefix("\"id\""))
 	return q
@@ -531,36 +526,45 @@ func (q messageUpdateSQL) ToSql() (string, []interface{}, error) {
 
 	return query + ";", append(svs, wvs...), nil
 }
+func (q messageUpdateSQL) ToSqlWithReturning() (string, []interface{}, error) {
+	query, args, err := q.ToSql()
+	if err != nil {
+		return "", []interface{}{}, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query + ";", args, nil
+}
+
 func (s Message) Update() messageUpdateSQL {
 	return NewMessageSQL().Update().WhereID(s.ID)
 }
 
 func (q messageUpdateSQL) Exec(db sqlla.DB) ([]Message, error) {
-	query, args, err := q.ToSql()
-	if err != nil {
-		return nil, err
-	}
-	_, err = db.Exec(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	qq := q.messageSQL
-
-	return qq.Select().All(db)
+	return q.ExecContext(context.Background(), db)
 }
 
 func (q messageUpdateSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
-	query, args, err := q.ToSql()
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return nil, err
 	}
-	_, err = db.ExecContext(ctx, query, args...)
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
-	qq := q.messageSQL
+	results := make([]Message, 0, 1)
+	defer rows.Close()
+	sel := NewMessageSQL().Select()
+	for rows.Next() {
+		result, err := sel.Scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, result)
+	}
 
-	return qq.Select().AllContext(ctx, db)
+	return results, nil
 }
 
 type messageDefaultUpdateHooker interface {
@@ -610,7 +614,21 @@ func (q messageInsertSQL) ToSql() (string, []any, error) {
 	if err != nil {
 		return "", []any{}, err
 	}
-	return query + " RETURNING " + "\"id\"" + ";", vs, nil
+	return query + ";", vs, nil
+}
+
+func (q messageInsertSQL) ToSqlWithReturning() (string, []any, error) {
+	query, args, err := q.ToSql()
+	if err != nil {
+		return "", []any{}, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query, args, nil
+}
+
+func (q messageInsertSQL) rowsNum() int {
+	return 1
 }
 
 func (q messageInsertSQL) messageInsertSQLToSqlPg(offset int) (string, int, []any, error) {
@@ -632,29 +650,20 @@ func (q messageInsertSQL) messageInsertSQLToSqlPg(offset int) (string, int, []an
 }
 
 func (q messageInsertSQL) Exec(db sqlla.DB) (Message, error) {
-	query, args, err := q.ToSql()
-	if err != nil {
-		return Message{}, err
-	}
-	row := db.QueryRow(query, args...)
-	var pk MessageID
-	if err := row.Scan(&pk); err != nil {
-		return Message{}, err
-	}
-	return NewMessageSQL().Select().ID(pk).Single(db)
+	return q.ExecContext(context.Background(), db)
 }
 
 func (q messageInsertSQL) ExecContext(ctx context.Context, db sqlla.DB) (Message, error) {
-	query, args, err := q.ToSql()
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return Message{}, err
 	}
 	row := db.QueryRowContext(ctx, query, args...)
-	var pk MessageID
-	if err := row.Scan(&pk); err != nil {
+	result, err := NewMessageSQL().Select().Scan(row)
+	if err != nil {
 		return Message{}, err
 	}
-	return NewMessageSQL().Select().ID(pk).SingleContext(ctx, db)
+	return result, nil
 }
 
 func (q messageInsertSQL) ExecContextWithoutSelect(ctx context.Context, db sqlla.DB) (sql.Result, error) {
@@ -671,6 +680,7 @@ type messageDefaultInsertHooker interface {
 }
 
 type messageInsertSQLToSqler interface {
+	rowsNum() int
 	messageInsertSQLToSqlPg(offset int) (string, int, []any, error)
 }
 
@@ -686,6 +696,10 @@ func (q messageSQL) BulkInsert() *messageBulkInsertSQL {
 
 func (q *messageBulkInsertSQL) Append(iqs ...messageInsertSQL) {
 	q.insertSQLs = append(q.insertSQLs, iqs...)
+}
+
+func (q *messageBulkInsertSQL) rowsNum() int {
+	return len(q.insertSQLs)
 }
 
 func (q *messageBulkInsertSQL) messageInsertSQLToSqlPg(offset int) (string, int, []any, error) {
@@ -724,10 +738,20 @@ func (q *messageBulkInsertSQL) ToSql() (string, []any, error) {
 	if err != nil {
 		return "", []any{}, err
 	}
-	return query + " RETURNING " + "\"id\"" + ";", vs, nil
+	return query + ";", vs, nil
 }
-func (q *messageBulkInsertSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
+func (q *messageBulkInsertSQL) ToSqlWithReturning() (string, []any, error) {
 	query, args, err := q.ToSql()
+	if err != nil {
+		return "", []any{}, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query + ";", args, nil
+}
+
+func (q *messageBulkInsertSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return nil, err
 	}
@@ -736,16 +760,18 @@ func (q *messageBulkInsertSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]
 		return nil, err
 	}
 	defer rows.Close()
-	pks := make([]MessageID, 0, len(q.insertSQLs))
+	results := make([]Message, 0, len(q.insertSQLs))
+	sel := NewMessageSQL().Select()
 	for rows.Next() {
-		var pk MessageID
-		if err := rows.Scan(&pk); err != nil {
+		result, err := sel.Scan(rows)
+		if err != nil {
 			return nil, err
 		}
-		pks = append(pks, pk)
+		results = append(results, result)
 	}
-	return NewMessageSQL().Select().IDIn(pks...).AllContext(ctx, db)
+	return results, nil
 }
+
 func (q *messageBulkInsertSQL) ExecContextWithoutSelect(ctx context.Context, db sqlla.DB) (sql.Result, error) {
 	query, args, err := q.ToSql()
 	if err != nil {
@@ -771,22 +797,32 @@ func (q messageInsertOnConflictDoNothingSQL) ToSql() (string, []any, error) {
 		return "", nil, err
 	}
 	query += " ON CONFLICT DO NOTHING"
-	query += " RETURNING " + "\"id\""
 	return query + ";", vs, nil
 
 }
 
-func (q messageInsertOnConflictDoNothingSQL) ExecContext(ctx context.Context, db sqlla.DB) (Message, error) {
+func (q messageInsertOnConflictDoNothingSQL) ToSqlWithReturning() (string, []any, error) {
 	query, args, err := q.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query + ";", args, nil
+
+}
+
+func (q messageInsertOnConflictDoNothingSQL) ExecContext(ctx context.Context, db sqlla.DB) (Message, error) {
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return Message{}, err
 	}
 	row := db.QueryRowContext(ctx, query, args...)
-	var pk MessageID
-	if err := row.Scan(&pk); err != nil {
+	result, err := NewMessageSQL().Select().Scan(row)
+	if err != nil {
 		return Message{}, err
 	}
-	return NewMessageSQL().Select().ID(pk).SingleContext(ctx, db)
+	return result, nil
 
 }
 
@@ -911,22 +947,32 @@ func (q messageInsertOnConflictDoUpdateSQL) ToSql() (string, []any, error) {
 	}
 	query += " ON CONFLICT (" + q.target + ") DO UPDATE SET" + os
 	vs = append(vs, ovs...)
-	query += " RETURNING " + "\"id\""
 
 	return query + ";", vs, nil
 }
 
-func (q messageInsertOnConflictDoUpdateSQL) ExecContext(ctx context.Context, db sqlla.DB) (Message, error) {
+func (q messageInsertOnConflictDoUpdateSQL) ToSqlWithReturning() (string, []any, error) {
 	query, args, err := q.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query + ";", args, nil
+
+}
+
+func (q messageInsertOnConflictDoUpdateSQL) ExecContext(ctx context.Context, db sqlla.DB) (Message, error) {
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return Message{}, err
 	}
 	row := db.QueryRowContext(ctx, query, args...)
-	var pk MessageID
-	if err := row.Scan(&pk); err != nil {
+	result, err := NewMessageSQL().Select().Scan(row)
+	if err != nil {
 		return Message{}, err
 	}
-	return NewMessageSQL().Select().ID(pk).SingleContext(ctx, db)
+	return result, nil
 
 }
 
@@ -961,13 +1007,23 @@ func (q messageBulkInsertOnConflictDoNothingSQL) ToSql() (string, []any, error) 
 		return "", nil, err
 	}
 	query += " ON CONFLICT DO NOTHING"
-	query += " RETURNING " + "\"id\""
 	return query + ";", vs, nil
 
 }
 
-func (q messageBulkInsertOnConflictDoNothingSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
+func (q messageBulkInsertOnConflictDoNothingSQL) ToSqlWithReturning() (string, []any, error) {
 	query, args, err := q.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query + ";", args, nil
+
+}
+
+func (q messageBulkInsertOnConflictDoNothingSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return nil, err
 	}
@@ -976,16 +1032,17 @@ func (q messageBulkInsertOnConflictDoNothingSQL) ExecContext(ctx context.Context
 		return nil, err
 	}
 	defer rows.Close()
-	pks := make([]MessageID, 0)
+	results := make([]Message, 0, q.insertSQL.rowsNum())
+	sel := NewMessageSQL().Select()
 	for rows.Next() {
-		var pk MessageID
-		if err := rows.Scan(&pk); err != nil {
+		result, err := sel.Scan(rows)
+		if err != nil {
 			return nil, err
 		}
-		pks = append(pks, pk)
+		results = append(results, result)
 	}
 
-	return NewMessageSQL().Select().IDIn(pks...).AllContext(ctx, db)
+	return results, nil
 
 }
 
@@ -1117,13 +1174,23 @@ func (q messageBulkInsertOnConflictDoUpdateSQL) ToSql() (string, []any, error) {
 	}
 	query += " ON CONFLICT (" + q.target + ") DO UPDATE SET" + os
 	vs = append(vs, ovs...)
-	query += " RETURNING " + "\"id\""
 
 	return query + ";", vs, nil
 }
 
-func (q messageBulkInsertOnConflictDoUpdateSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
+func (q messageBulkInsertOnConflictDoUpdateSQL) ToSqlWithReturning() (string, []any, error) {
 	query, args, err := q.ToSql()
+	if err != nil {
+		return "", nil, err
+	}
+	query = strings.TrimSuffix(query, ";")
+	query += " RETURNING " + strings.Join(messageAllColumns, ", ")
+	return query + ";", args, nil
+
+}
+
+func (q messageBulkInsertOnConflictDoUpdateSQL) ExecContext(ctx context.Context, db sqlla.DB) ([]Message, error) {
+	query, args, err := q.ToSqlWithReturning()
 	if err != nil {
 		return nil, err
 	}
@@ -1132,16 +1199,17 @@ func (q messageBulkInsertOnConflictDoUpdateSQL) ExecContext(ctx context.Context,
 		return nil, err
 	}
 	defer rows.Close()
-	pks := make([]MessageID, 0)
+	results := make([]Message, 0, q.insertSQL.rowsNum())
+	sel := NewMessageSQL().Select()
 	for rows.Next() {
-		var pk MessageID
-		if err := rows.Scan(&pk); err != nil {
+		result, err := sel.Scan(rows)
+		if err != nil {
 			return nil, err
 		}
-		pks = append(pks, pk)
+		results = append(results, result)
 	}
 
-	return NewMessageSQL().Select().IDIn(pks...).AllContext(ctx, db)
+	return results, nil
 
 }
 
