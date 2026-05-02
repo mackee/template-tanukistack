@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>aquaproj/aqua-renovate-config#2.12.0"
+  ],
+  "enabledManagers": [
+    "custom.regex"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["aquaproj/aqua-registry"],
+      "extends": ["schedule:earlyMondays"]
+    }
+  ]
+}

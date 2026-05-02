@@ -1,0 +1,38 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+      mackee:
+        patterns:
+          - "github.com/mackee/*"
+      jackc:
+        patterns:
+          - "github.com/jackc/*"
+      go-playground:
+        patterns:
+          - "github.com/go-playground/*"
+    commit-message:
+      prefix: chore
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: chore
+      include: scope
