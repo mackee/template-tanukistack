@@ -1,0 +1,25 @@
+version: '3'
+
+vars:
+  WORKSPACE_FOLDER: '{{.ROOT_DIR}}'
+
+tasks:
+  up:
+    desc: "Start devcontainer"
+    cmds:
+      - devcontainer up --workspace-folder {{.WORKSPACE_FOLDER}}
+
+  down:
+    desc: "Stop and remove devcontainer (volumes are kept)"
+    cmds:
+      - docker compose -p template-tanukistack_devcontainer -f {{.WORKSPACE_FOLDER}}/.devcontainer/docker-compose.yml down
+
+  shell:
+    desc: "Open a shell inside devcontainer"
+    cmds:
+      - devcontainer exec --workspace-folder {{.WORKSPACE_FOLDER}} bash
+
+  exec:
+    desc: "Execute a command inside devcontainer (e.g. task dc:exec -- task test)"
+    cmds:
+      - devcontainer exec --workspace-folder {{.WORKSPACE_FOLDER}} {{.CLI_ARGS}}

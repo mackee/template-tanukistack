@@ -47,6 +47,35 @@ $ task dev
 $ task test
 ```
 
+## Use with devcontainer
+
+A devcontainer setup is provided so you can develop without installing Go, task, or PostgreSQL on the host.
+
+### Requirements
+
+* Docker
+* [devcontainer CLI](https://github.com/devcontainers/cli)
+  ```sh
+  $ brew install --cask devcontainer
+  # or: npm install -g @devcontainers/cli
+  ```
+
+### Usage
+
+```sh
+$ task dc:up                       # build & start the container (first run takes a while)
+$ task dc:exec -- task test        # run tests against the postgres sidecar
+$ task dc:exec -- task dev         # run the dev server (forwarded to host :8080)
+$ task dc:shell                    # open a shell inside the container
+$ task dc:down                     # stop & remove containers (volumes are kept)
+```
+
+### Notes
+
+* `DATABASE_DSN` is set in `containerEnv` to point at the bundled postgres sidecar, so a host `.env` is not required.
+* aqua-managed tools (`go`, `task`) are installed on `postCreate` and cached in a named volume.
+* The postgres data volume (`pgdata`) is preserved across `dc:down` / `dc:up`.
+
 # License
 
 MIT

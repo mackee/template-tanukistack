@@ -1,5 +1,9 @@
 version: '3'
 
+includes:
+  dc:
+    taskfile: .devcontainer/Taskfile.yaml
+
 tasks:
   dev:
     cmds:
