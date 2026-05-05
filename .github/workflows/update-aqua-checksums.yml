@@ -1,0 +1,32 @@
+name: update-aqua-checksums
+
+on:
+  pull_request:
+    paths:
+      - aqua.yaml
+      - aqua-checksums.json
+
+permissions:
+  contents: read
+
+jobs:
+  update-checksums:
+    if: github.actor == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: aquaproj/aqua-installer@v4.0.4
+        with:
+          aqua_version: v2.39.0
+      - uses: aquaproj/update-checksum-action@v0.2.7
+        with:
+          prune: "true"
+          skip_push: "true"
+      - uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: "chore: update aqua-checksums.json"

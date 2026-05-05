@@ -25,6 +25,20 @@ func (m *MessageTable) GetByID(ctx context.Context, db sqlla.DB, c0 MessageID) (
 	return &row, nil
 }
 
+func (m *MessageTable) ListByIDS(ctx context.Context, db sqlla.DB, cs []MessageID) (Messages, error) {
+	_rows, err := NewMessageSQL().Select().
+		IDIn(cs...).
+		AllContext(ctx, db)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list Messages by IDS: %w", err)
+	}
+	rows := make(Messages, len(_rows))
+	for i := range _rows {
+		rows[i] = &_rows[i]
+	}
+	return rows, nil
+}
+
 type MessageTableCreateInput struct {
 	Author string
 	Text   string
@@ -58,15 +72,15 @@ func (m *MessageTable) CreateMulti(ctx context.Context, db sqlla.DB, inputs []Me
 
 type Messages []*Message
 
-func (m Message) DefaultInsertHook(q messageInsertSQL) (messageInsertSQL, error) {
+func (m Message) DefaultInsertHook(_q messageInsertSQL) (messageInsertSQL, error) {
 	now := time.Now()
-	return q.
+	return _q.
 		ValueCreatedAt(now).
 		ValueUpdatedAt(now), nil
 }
 
-func (m Message) DefaultUpdateHook(q messageUpdateSQL) (messageUpdateSQL, error) {
+func (m Message) DefaultUpdateHook(_q messageUpdateSQL) (messageUpdateSQL, error) {
 	now := time.Now()
-	return q.
+	return _q.
 		SetUpdatedAt(now), nil
 }
