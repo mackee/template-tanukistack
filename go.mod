@@ -17,7 +17,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/mackee/go-genddl v0.0.0-20250714062348-8a4891bb01ff
 	github.com/mackee/go-sqlla/v2 v2.99.0-rc5
-	github.com/mackee/tanukirpc v0.8.2
+	github.com/mackee/tanukirpc v0.9.0
 	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
 )
